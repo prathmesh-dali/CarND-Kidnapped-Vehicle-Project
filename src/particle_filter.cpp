@@ -128,25 +128,31 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> trasformed_obs;
 		std::vector<LandmarkObs> predictions;
 		Particle& particle = particles[i]; 
-		for(auto obs: observations){
+		for(int j = 0; j< observations.size();j++){
 			LandmarkObs temp_mapped = {};
-			temp_mapped.x = particle.x + (cos(particle.theta) * obs.x) - (sin(particle.theta) * obs.y);
-			temp_mapped.y = particle.y + (sin(particle.theta) * obs.x) + (cos(particle.theta) * obs.y);
+			double o_x = observations[j].x;
+			double o_y = observations[j].y;
+			double p_theta = particle.theta;
+			temp_mapped.x = particle.x + (cos(p_theta) * o_x) - (sin(p_theta) * o_y);
+			temp_mapped.y = particle.y + (sin(p_theta) * o_x) + (cos(p_theta) * o_y);
 			trasformed_obs.push_back(temp_mapped);
 		}
 
-		for(auto landmark: map_landmarks.landmark_list){
-			if(fabs(particle.x-landmark.x_f) <= sensor_range && fabs(particle.y-landmark.y_f) <= sensor_range){
+		for(int j = 0; j< map_landmarks.landmark_list.size();j++){
+			if(fabs(particle.x-map_landmarks.landmark_list[j].x_f) <= sensor_range && fabs(particle.y- map_landmarks.landmark_list[j].y_f) <= sensor_range){
 				LandmarkObs temp_predict = {};
-				temp_predict.x = landmark.x_f;
-				temp_predict.y = landmark.y_f;
-				temp_predict.id = landmark.id_i;
+				temp_predict.x = map_landmarks.landmark_list[j].x_f;
+				temp_predict.y = map_landmarks.landmark_list[j].y_f;
+				temp_predict.id = map_landmarks.landmark_list[j].id_i;
 				predictions.push_back(temp_predict);
 			}
 		}
 		dataAssociation(predictions, trasformed_obs);
-		for(auto obs: trasformed_obs){
-			double obs_w = ( 1/(2*M_PI*std_landmark[0]*std_landmark[1])) * exp( -( pow(predictions[obs.id].x-obs.x,2)/(2*pow(std_landmark[0], 2)) + (pow(predictions[obs.id].y-obs.y,2)/(2*pow(std_landmark[1], 2))) ) );
+		for(int j = 0; j< trasformed_obs.size();j++){
+			double a = ( 1/(2*M_PI*std_landmark[0]*std_landmark[1])) ;
+			double first_term_numerator = pow(predictions[trasformed_obs[j].id].x-trasformed_obs[j].x,2);
+			double second_term_numerator = pow(predictions[trasformed_obs[j].id].y-trasformed_obs[j].y,2);
+			double obs_w = a* exp( -( first_term_numerator/(2*pow(std_landmark[0], 2)) + (second_term_numerator/(2*pow(std_landmark[1], 2))) ) );
 			particle.weight *= obs_w;
 			weights[i] *=  obs_w;
 		}
