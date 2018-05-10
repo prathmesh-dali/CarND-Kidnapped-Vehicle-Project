@@ -29,12 +29,13 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// initialize a random engine
 	default_random_engine gen;
 
-	// This line creates a normal (Gaussian) distribution for x.
-	// with some mean and standard deviation
+	// These lines creates a normal (Gaussian) distribution.
+	// with 0 mean and standard deviation
 	std::normal_distribution<double> dist_x(0, std[0]);
 	std::normal_distribution<double> dist_y(0, std[1]);
 	std::normal_distribution<double> dist_theta(0, std[2]);
 
+	//Initializing particles based on GPS readings.
 	for(int i = 0; i<num_particles; i++){
 		Particle p = {};
 		p.id = 0;
@@ -58,11 +59,13 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 	default_random_engine gen;
 
-	// This line creates a normal (Gaussian) distribution for x.
-	// with some mean and standard deviation
+	// These lines creates a normal (Gaussian) distribution.
+	// with 0 mean and standard deviation
 	std::normal_distribution<double> dist_x(0, std_pos[0]);
 	std::normal_distribution<double> dist_y(0, std_pos[1]);
 	std::normal_distribution<double> dist_theta(0, std_pos[2]);
+
+	// Performing prediction step
 
 	for(int i = 0; i < num_particles; i++){
         Particle& p = particles[i]; 
@@ -70,6 +73,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         double new_x;
 		double new_y;
 		double new_theta;
+
+		// Calculating new values of x, y and theta based on value of yaw_rate
 
         if(fabs(yaw_rate) < 0.001){
             new_x = p.x + velocity*delta_t*cos(p.theta);
@@ -81,6 +86,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             new_theta = p.theta + yaw_rate*delta_t;
         }
 
+		// Adding noise to the values
         p.x = new_x + dist_x(gen);
         p.y = new_y + dist_y(gen);
         p.theta = new_theta + dist_theta(gen);
@@ -96,6 +102,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+	//Finding index of associated Landmark with particular observation
 	for(unsigned int i = 0; i < observations.size(); i++){
 		auto& obs = observations[i];
 		int temp_id;
@@ -128,6 +135,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> trasformed_obs;
 		std::vector<LandmarkObs> predictions;
 		Particle& particle = particles[i]; 
+		//Mapping the observations from car coordinate to map coordinate
 		for(int j = 0; j< observations.size();j++){
 			LandmarkObs temp_mapped = {};
 			double o_x = observations[j].x;
@@ -137,6 +145,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			temp_mapped.y = particle.y + (sin(p_theta) * o_x) + (cos(p_theta) * o_y);
 			trasformed_obs.push_back(temp_mapped);
 		}
+
 
 		for(int j = 0; j< map_landmarks.landmark_list.size();j++){
 			if(fabs(particle.x-map_landmarks.landmark_list[j].x_f) <= sensor_range && fabs(particle.y- map_landmarks.landmark_list[j].y_f) <= sensor_range){
@@ -148,6 +157,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 		dataAssociation(predictions, trasformed_obs);
+
+		// Calculating weights
 		for(int j = 0; j< trasformed_obs.size();j++){
 			double a = ( 1/(2*M_PI*std_landmark[0]*std_landmark[1])) ;
 			double first_term_numerator = pow(predictions[trasformed_obs[j].id].x-trasformed_obs[j].x,2);
